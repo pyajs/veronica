@@ -1,9 +1,9 @@
 from antlr4 import *
-
 from parser.DSLSQLLexer import DSLSQLLexer
 from parser.DSLSQLListener import DSLSQLListener
 from parser.DSLSQLParser import DSLSQLParser
-from parser.DSLSQLVisitor import DSLSQLVisitor
+# from parser.DSLSQLVisitor import DSLSQLVisitor
+from adaptor import *
 
 
 class XQLExec:
@@ -16,8 +16,17 @@ class XQLExec:
 
 
 class XQLExecListener(DSLSQLListener):
+    AdaptorDict = {
+        "load": LoadAdaptor(),
+        "connect": ConnectAdaptor(),
+    }
+
+    def __init__(self):
+        self._env = dict()
+        self.last_select_table = None
+
     def exitSql(self, ctx):
-        print(ctx.getChild(0).getText().lower())
+        self.AdaptorDict.get(ctx.getChild(0).getText().lower()).parse(ctx)
 
 
 def main():
