@@ -1,56 +1,102 @@
 """ Adaptor """
 
+from parser.DSLSQLParser import DSLSQLParser
+
 
 class DslAdaptor:
-    def __init__(self):
-        pass
+
+    def clean_str(self, raw_str):
+        if raw_str.startswith("`") or raw_str.startswith("\""):
+            raw_str = raw_str.replace("`", "").replace("\"", "")
+        return raw_str
 
 
-class ConnectAdaptor:
+class ConnectAdaptor(DslAdaptor):
+
     def parse(self, ctx):
-        print("connect adaptor", ctx)
+        option = dict()
+        for i in range(ctx.getChildCount()):
+            ctype = ctx.getChild(i)
+            if type(ctype) == DSLSQLParser.ExpressionContext:
+                option[self.clean_str(
+                    ctype.identifier().getText())] = self.clean_str(
+                        ctype.STRING().getText())
+            if type(ctype) == DSLSQLParser.BooleanExpressionContext:
+                option[self.clean_str(ctype.expression().identifier().
+                                      getText())] = self.clean_str(
+                                          ctype.expression().STRING().getText())
+            if type(ctype) == DSLSQLParser.DbContext:
+                pass
+        print(option)
 
 
-class CreateAdaptor:
+class CreateAdaptor(DslAdaptor):
+
     def parse(self, ctx):
-        print("create adaptor", ctx)
+        _input = ctx.start.getTokenSource()
+        print(_input)
+        # sparkSession.sql(sql).count()
 
 
-class DropAdaptor:
+class DropAdaptor(DslAdaptor):
+
     def parse(self, ctx):
         print("drop adaptor", ctx)
 
 
-class InsertAdaptor:
+class InsertAdaptor(DslAdaptor):
+
     def parse(self, ctx):
         print("insert adaptor", ctx)
 
 
-class LoadAdaptor:
+class LoadAdaptor(DslAdaptor):
+
     def parse(self, ctx):
-        print("load adaptor", ctx)
+        option = dict()
+        format_type, path, table_name = "", "", ""
+        for i in range(ctx.getChildCount()):
+            ctype = ctx.getChild(i)
+            if type(ctype) == DSLSQLParser.Format_typeContext:
+                format_type = ctype.getText()
+            if type(ctype) == DSLSQLParser.PathContext:
+                path = ctype.getText()
+            if type(ctype) == DSLSQLParser.TableNameContext:
+                table_name = ctype.getText()
+            if type(ctype) == DSLSQLParser.ExpressionContext:
+                option[ctype.identifier().getText()] = ctype.STRING().getText()
+            if type(ctype) == DSLSQLParser.BooleanExpressionContext:
+                option[ctype.expression().identifier().
+                       getText()] = ctype.expression().STRING().getText()
+        print(format_type, path, table_name)
+        print(option)
 
 
-class RegisterAdaptor:
+class RegisterAdaptor(DslAdaptor):
+
     def parse(self, ctx):
         print("register adaptor", ctx)
 
 
-class SaveAdaptor:
+class SaveAdaptor(DslAdaptor):
+
     def parse(self, ctx):
         print("save adaptor", ctx)
 
 
-class SelectAdaptor:
+class SelectAdaptor(DslAdaptor):
+
     def parse(self, ctx):
         print("select adaptor", ctx)
 
 
-class SetAdaptor:
+class SetAdaptor(DslAdaptor):
+
     def parse(self, ctx):
         print("set adaptor", ctx)
 
 
-class TrainAdaptor:
-    def run(self):
+class TrainAdaptor(DslAdaptor):
+
+    def run(self, ctx):
         print("train adaptor", ctx)
