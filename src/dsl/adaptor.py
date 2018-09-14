@@ -10,6 +10,10 @@ class DslAdaptor:
             raw_str = raw_str.replace("`", "").replace("\"", "")
         return raw_str
 
+    def get_original_text(self, ctx):
+        _input = ctx.start.getTokenSource()._input
+        return _input.getText(ctx.start.start, ctx.stop.stop)
+
 
 class ConnectAdaptor(DslAdaptor):
 
@@ -33,21 +37,28 @@ class ConnectAdaptor(DslAdaptor):
 class CreateAdaptor(DslAdaptor):
 
     def parse(self, ctx):
-        _input = ctx.start.getTokenSource()
-        print(_input)
+        original_text = self.get_original_text(ctx)
+        # merge
+        print(original_text)
         # sparkSession.sql(sql).count()
 
 
 class DropAdaptor(DslAdaptor):
 
     def parse(self, ctx):
-        print("drop adaptor", ctx)
+        original_text = original_text = self.get_original_text(ctx)
+        # merge
+        print(original_text)
+        # sparkSession.sql(sql).count()
 
 
 class InsertAdaptor(DslAdaptor):
 
     def parse(self, ctx):
-        print("insert adaptor", ctx)
+        original_text = self.get_original_text(ctx)
+        # merge
+        print(original_text)
+        # sparkSession.sql(sql).count()
 
 
 class LoadAdaptor(DslAdaptor):
