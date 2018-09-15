@@ -20,18 +20,20 @@ class ConnectAdaptor(DslAdaptor):
     def parse(self, ctx):
         option = dict()
         for i in range(ctx.getChildCount()):
-            ctype = ctx.getChild(i)
-            if type(ctype) == DSLSQLParser.ExpressionContext:
+            _type = ctx.getChild(i)
+            if type(_type) == DSLSQLParser.Format_typeContext:
+                option["format"] = _type.getText()
+            if type(_type) == DSLSQLParser.ExpressionContext:
                 option[self.clean_str(
-                    ctype.identifier().getText())] = self.clean_str(
-                        ctype.STRING().getText())
-            if type(ctype) == DSLSQLParser.BooleanExpressionContext:
-                option[self.clean_str(ctype.expression().identifier().
+                    _type.identifier().getText())] = self.clean_str(
+                        _type.STRING().getText())
+            if type(_type) == DSLSQLParser.BooleanExpressionContext:
+                option[self.clean_str(_type.expression().identifier().
                                       getText())] = self.clean_str(
-                                          ctype.expression().STRING().getText())
-            if type(ctype) == DSLSQLParser.DbContext:
-                pass
-        print(option)
+                                          _type.expression().STRING().getText())
+            if type(_type) == DSLSQLParser.DbContext:
+                globals()[_type.getText()] = option
+        print(globals()["tables"])
 
 
 class CreateAdaptor(DslAdaptor):
@@ -46,7 +48,7 @@ class CreateAdaptor(DslAdaptor):
 class DropAdaptor(DslAdaptor):
 
     def parse(self, ctx):
-        original_text = original_text = self.get_original_text(ctx)
+        original_text = self.get_original_text(ctx)
         # merge
         print(original_text)
         # sparkSession.sql(sql).count()
@@ -67,18 +69,18 @@ class LoadAdaptor(DslAdaptor):
         option = dict()
         format_type, path, table_name = "", "", ""
         for i in range(ctx.getChildCount()):
-            ctype = ctx.getChild(i)
-            if type(ctype) == DSLSQLParser.Format_typeContext:
-                format_type = ctype.getText()
-            if type(ctype) == DSLSQLParser.PathContext:
-                path = ctype.getText()
-            if type(ctype) == DSLSQLParser.TableNameContext:
-                table_name = ctype.getText()
-            if type(ctype) == DSLSQLParser.ExpressionContext:
-                option[ctype.identifier().getText()] = ctype.STRING().getText()
-            if type(ctype) == DSLSQLParser.BooleanExpressionContext:
-                option[ctype.expression().identifier().
-                       getText()] = ctype.expression().STRING().getText()
+            _type = ctx.getChild(i)
+            if type(_type) == DSLSQLParser.Format_typeContext:
+                format_type = _type.getText()
+            if type(_type) == DSLSQLParser.PathContext:
+                path = _type.getText()
+            if type(_type) == DSLSQLParser.TableNameContext:
+                table_name = _type.getText()
+            if type(_type) == DSLSQLParser.ExpressionContext:
+                option[_type.identifier().getText()] = _type.STRING().getText()
+            if type(_type) == DSLSQLParser.BooleanExpressionContext:
+                option[_type.expression().identifier().
+                       getText()] = _type.expression().STRING().getText()
         print(format_type, path, table_name)
         print(option)
 
@@ -86,19 +88,62 @@ class LoadAdaptor(DslAdaptor):
 class RegisterAdaptor(DslAdaptor):
 
     def parse(self, ctx):
-        print("register adaptor", ctx)
+        option = dict()
+        func_name, format_type, path = "", "", ""
+        for i in range(ctx.getChildCount()):
+            _type = ctx.getChild(i)
+            if type(_type) == DSLSQLParser.FunctionNameContext:
+                func_name = _type.getText()
+            if type(_type) == DSLSQLParser.Format_typeContext:
+                format_type = _type.getText()
+            if type(_type) == DSLSQLParser.PathContext:
+                path = _type.getText()
+            if type(_type) == DSLSQLParser.ExpressionContext:
+                option[self.clean_str(
+                    _type.identifier().getText())] = self.clean_str(
+                        _type.STRING().getText())
+            if type(_type) == DSLSQLParser.BooleanExpressionContext:
+                option[self.clean_str(_type.expression().identifier().
+                                      getText())] = self.clean_str(
+                                          _type.expression().STRING().getText())
+        print(func_name, format_type, path)
+        print(option)
 
 
 class SaveAdaptor(DslAdaptor):
 
     def parse(self, ctx):
-        print("save adaptor", ctx)
+        option = dict()
+        mode, final_path, format_type, table_name = "", "", "", ""
+        for i in range(ctx.getChildCount()):
+            _type = ctx.getChild(i)
+            if type(_type) == DSLSQLParser.Format_typeContext:
+                format_type = _type.getText()
+            if type(_type) == DSLSQLParser.PathContext:
+                final_path = _type.getText()
+            if type(_type) == DSLSQLParser.TableNameContext:
+                table_name = _type.getText()
+            if type(_type) == DSLSQLParser.OverwriteContext:
+                mode = _type.getText()
+            if type(_type) == DSLSQLParser.ExpressionContext:
+                option[self.clean_str(
+                    _type.identifier().getText())] = self.clean_str(
+                        _type.STRING().getText())
+            if type(_type) == DSLSQLParser.BooleanExpressionContext:
+                option[self.clean_str(_type.expression().identifier().
+                                      getText())] = self.clean_str(
+                                          _type.expression().STRING().getText())
+        print(format_type, final_path, table_name, mode)
+        print(option)
 
 
 class SelectAdaptor(DslAdaptor):
 
     def parse(self, ctx):
-        print("select adaptor", ctx)
+        original_text = self.get_original_text(ctx)
+        print(original_text.split("\\s+"))
+        # merge
+        print(original_text)
 
 
 class SetAdaptor(DslAdaptor):
@@ -109,5 +154,24 @@ class SetAdaptor(DslAdaptor):
 
 class TrainAdaptor(DslAdaptor):
 
-    def run(self, ctx):
-        print("train adaptor", ctx)
+    def parse(self, ctx):
+        option = dict()
+        format_type, table_name, path = "", "", ""
+        for i in range(ctx.getChildCount()):
+            _type = ctx.getChild(i)
+            if type(_type) == DSLSQLParser.Format_typeContext:
+                format_type = _type.getText()
+            if type(_type) == DSLSQLParser.PathContext:
+                path = _type.getText()
+            if type(_type) == DSLSQLParser.TableNameContext:
+                table_name = _type.getText()
+            if type(_type) == DSLSQLParser.ExpressionContext:
+                option[self.clean_str(
+                    _type.identifier().getText())] = self.clean_str(
+                        _type.STRING().getText())
+            if type(_type) == DSLSQLParser.BooleanExpressionContext:
+                option[self.clean_str(_type.expression().identifier().
+                                      getText())] = self.clean_str(
+                                          _type.expression().STRING().getText())
+        print(format_type, table_name, path)
+        print(option)

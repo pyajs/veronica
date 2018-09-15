@@ -46,12 +46,16 @@ class XQLExecListener(DSLSQLListener):
 
 def main():
     # load_xql = """load json.`/path` where `xxxx`="aaaa" and yyyy="bbbbb" and zzzz="ccc" as temp1;"""
-    # connect_xql = """ connect es where `es.nodes`="192.168.200.152" and `es.port`="9200"; """
+    # connect_xql = """ connect es where `es.nodes`="192.168.200.152" and `es.port`="9200" as tables; """
     # create_xql = """ create table test; """
-    drop_xql = """ drop table if exists test; """
+    # drop_xql = """ drop table if exists test; """
+    # reg_xql = """ register DCT.`/path` as predict_func; """
+    # save_xql = """ save overwrite table as parquet.`/tmp/table`; """
+    # select_xql = """ select * from table2 as table3; """
+    train_xql = """ train temp1 as SKLearn.`/path` where `aaaa`="123" and `bbb`="222"; """
     my_lister = XQLExecListener()
     p = XQLExec()
-    p.parse_xql(drop_xql, my_lister)
+    p.parse_xql(train_xql, my_lister)
 
 
 if __name__ == '__main__':
