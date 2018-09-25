@@ -36,8 +36,9 @@ class XQLExecListener(DSLSQLListener):
         "register": RegisterAdaptor()
     }
 
-    def __init__(self):
+    def __init__(self, sparkSession):
         self._env = dict()
+        self._sparkSession = sparkSession
         self.last_select_table = None
 
     def exitSql(self, ctx):
