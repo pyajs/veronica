@@ -5,7 +5,7 @@ class ParamsUtil:
 
     def __init__(self, params):
         self.params = params
-        self.pd = self.parse_param()
+        self.pp = self.parse_param()
 
     def parse_param(self):
         if (len(self.params) % 2 != 0):
