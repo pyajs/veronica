@@ -3,24 +3,19 @@ from pyspark.sql import SparkSession
 
 
 class SparkRuntime:
-    __instance = None
 
     def __init__(self, _params):
         self.params = _params
-
-    def __new__(cls):
-        if cls.__instance is None:
-            cls.__instance = object.__new__(cls)
-        return cls.__instance
+        self.sparkSession = self.create_runtime()
 
     def is_local_master(self):
         master = self.params.get("xmatrix.master", "")
-        return master == "local" or master.startwith("local[")
+        return master == "local" or master.startswith("local[")
 
     def create_runtime(self):
         conf = SparkConf()
         for k in self.params.keys():
-            if k.startwith("spark.") or k.startwith("hive."):
+            if k.startswith("spark.") or k.startswith("hive."):
                 conf.set(k, self.params[k])
 
         if "xmatrix.master" in self.params:
@@ -28,7 +23,7 @@ class SparkRuntime:
 
         conf.setAppName(self.params["xmatrix.name"])
 
-        sparkSession = SparkSession.builder.config(conf)
+        sparkSession = SparkSession.builder.config(conf=conf)
 
         if bool(self.params.get("xmatrix.enableHiveSupport", "false")):
             sparkSession.enableHiveSupport()
@@ -40,7 +35,7 @@ class SparkRuntime:
         if job_type == "stream" and "xmatrix.metrics.kafka" in self.params:
             ss.sparkContext.setLocalProperty(
                 "kafkaAddr", self.params["xmatrix.metrics.kafka"])
-
+        print(ss)
         return ss
 
     def register_udf(self, clzz):

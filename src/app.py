@@ -13,10 +13,11 @@ class VeronicaApp:
 params_list = [
     "-xmatrix.master", "local[2]",
     "-xmatrix.name", "Monster",
-    "-xmatrix.rest", "true",
+    "-xmatrix.rest", "false",
     "-xmatrix.rest.ip", "127.0.0.1",
     "-xmatrix.rest.port", "8123",
     "-xmatrix.platform", "spark",
+    "-xmatrix.xql", "/home/w4n9/Code/Github/veronica/xql/first.xql",
 ]
 
 VeronicaApp.run(params_list)

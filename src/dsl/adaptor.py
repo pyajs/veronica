@@ -1,6 +1,6 @@
 """ Adaptor """
 
-from parser.DSLSQLParser import DSLSQLParser
+from dsl.parser.DSLSQLParser import DSLSQLParser
 
 
 class DslAdaptor:

@@ -1,20 +1,18 @@
-from parser.DSLSQLLexer import DSLSQLLexer
-from parser.DSLSQLListener import DSLSQLListener
-from parser.DSLSQLParser import DSLSQLParser
+from dsl.parser.DSLSQLLexer import DSLSQLLexer
+from dsl.parser.DSLSQLListener import DSLSQLListener
+from dsl.parser.DSLSQLParser import DSLSQLParser
 
 from antlr4 import InputStream, CommonTokenStream, ParseTreeWalker
 
-from adaptor import LoadAdaptor, ConnectAdaptor, SelectAdaptor, SaveAdaptor, \
+from dsl.adaptor import LoadAdaptor, ConnectAdaptor, SelectAdaptor, SaveAdaptor, \
                     CreateAdaptor, InsertAdaptor, DropAdaptor, SetAdaptor, \
                     TrainAdaptor, RegisterAdaptor
 
 
 class XQLExec:
 
-    def __init__(self):
-        self._env = globals()
-
-    def parse_xql(self, input_xql, listener):
+    @classmethod
+    def parse_xql(cls, input_xql, listener):
         lexer = DSLSQLLexer(InputStream(input_xql))
         tokens = CommonTokenStream(lexer)
         parse = DSLSQLParser(tokens)
@@ -36,7 +34,7 @@ class XQLExecListener(DSLSQLListener):
         "register": RegisterAdaptor()
     }
 
-    def __init__(self, sparkSession):
+    def __init__(self, sparkSession, group_id):
         self._env = dict()
         self._sparkSession = sparkSession
         self.last_select_table = None

@@ -1,4 +1,5 @@
-from core.spark_runtime import 
+from core.spark_runtime import SparkRuntime
+from dsl.execute import XQLExec, XQLExecListener
 
 
 class PlatformManager:
@@ -21,7 +22,7 @@ class PlatformManager:
         pass
 
     def get_runtime(self):
-        pass
+        return SparkRuntime(self.config)
 
     def clear(self):
         pass
@@ -33,7 +34,7 @@ class PlatformManager:
 
         temp_params = {i: params[i] for i in params.keys() if i.startswith("xmatrix")}
         print(temp_params)
-        runtime = cls.get_runtime()
+        runtime = cls.get_runtime(cls)
 
         if bool(params.get("xmatrix.rest", "false")):
             ip = params.get("xmatrix.rest.ip", "127.0.0.1")
@@ -44,7 +45,7 @@ class PlatformManager:
             cls.start_thrift_server(cls)
 
         if bool(params.get("xmatrix.unitest.startRuntime", "true")):
-            runtime.start_runtime()
+            pass
 
         if params.get("xmatrix.udfClassPath", "") != "":
             pass
@@ -55,8 +56,11 @@ class PlatformManager:
             if job_file_path.startswith("classpath://"):
                 pass
             else:
-                xql = ""
+                xql = open(job_file_path, "r").read()
 
-            ss = runtime.sparkSession()
-            job_type = params.get("xmatrix.type", "script")
-            groupId = ss.sparkContext.appName
+            ss = runtime.sparkSession
+            # job_type = params.get("xmatrix.type", "script")
+            group_id = ss.sparkContext.appName
+
+            context = XQLExecListener(ss, group_id)
+            XQLExec.parse_xql(xql, context)
