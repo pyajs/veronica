@@ -8,6 +8,8 @@ from dsl.adaptor import LoadAdaptor, ConnectAdaptor, SelectAdaptor, SaveAdaptor,
                     CreateAdaptor, InsertAdaptor, DropAdaptor, SetAdaptor, \
                     TrainAdaptor, RegisterAdaptor
 
+from common.utils import singleton
+
 
 class XQLExec:
 
@@ -20,24 +22,25 @@ class XQLExec:
         ParseTreeWalker().walk(listener, tree)
 
 
+@singleton
 class XQLExecListener(DSLSQLListener):
-    AdaptorDict = {
-        "load": LoadAdaptor(),
-        "connect": ConnectAdaptor(),
-        "select": SelectAdaptor(),
-        "save": SaveAdaptor(),
-        "create": CreateAdaptor(),
-        "insert": InsertAdaptor(),
-        "drop": DropAdaptor(),
-        "set": SetAdaptor(),
-        "train": TrainAdaptor(),
-        "register": RegisterAdaptor()
-    }
 
     def __init__(self, sparkSession, group_id):
         self._env = dict()
         self._sparkSession = sparkSession
         self.last_select_table = None
+        self.AdaptorDict = {
+            "load": LoadAdaptor(self),
+            "connect": ConnectAdaptor(),
+            "select": SelectAdaptor(),
+            "save": SaveAdaptor(),
+            "create": CreateAdaptor(),
+            "insert": InsertAdaptor(),
+            "drop": DropAdaptor(),
+            "set": SetAdaptor(),
+            "train": TrainAdaptor(),
+            "register": RegisterAdaptor()
+        }
 
     def exitSql(self, ctx):
         self.AdaptorDict.get(ctx.getChild(0).getText().lower()).parse(ctx)

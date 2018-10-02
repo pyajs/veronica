@@ -1,7 +1,10 @@
 from pyspark import SparkConf
 from pyspark.sql import SparkSession
 
+from common.utils import singleton
 
+
+@singleton
 class SparkRuntime:
 
     def __init__(self, _params):

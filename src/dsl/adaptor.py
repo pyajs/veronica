@@ -65,6 +65,9 @@ class InsertAdaptor(DslAdaptor):
 
 class LoadAdaptor(DslAdaptor):
 
+    def __init__(self, xql_listener):
+        self.xql_listener = xql_listener
+
     def parse(self, ctx):
         option = dict()
         format_type, path, table_name = "", "", ""
@@ -73,7 +76,7 @@ class LoadAdaptor(DslAdaptor):
             if type(_type) == DSLSQLParser.Format_typeContext:
                 format_type = _type.getText()
             if type(_type) == DSLSQLParser.PathContext:
-                path = _type.getText()
+                path = self.clean_str(_type.getText())
             if type(_type) == DSLSQLParser.TableNameContext:
                 table_name = _type.getText()
             if type(_type) == DSLSQLParser.ExpressionContext:
@@ -81,8 +84,13 @@ class LoadAdaptor(DslAdaptor):
             if type(_type) == DSLSQLParser.BooleanExpressionContext:
                 option[_type.expression().identifier().
                        getText()] = _type.expression().STRING().getText()
-        print(format_type, path, table_name)
-        print(option)
+        print(format_type, path, table_name, option)
+        reader = self.xql_listener._sparkSession.read
+        if option:
+            reader.options(option)
+        if format_type == "json":
+            table = reader.format(format_type).load(path)
+            table.show()
 
 
 class RegisterAdaptor(DslAdaptor):
