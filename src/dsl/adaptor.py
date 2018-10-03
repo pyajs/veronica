@@ -85,12 +85,14 @@ class LoadAdaptor(DslAdaptor):
                 option[_type.expression().identifier().
                        getText()] = _type.expression().STRING().getText()
         print(format_type, path, table_name, option)
+        table = None
         reader = self.xql_listener._sparkSession.read
         if option:
             reader.options(option)
         if format_type == "json":
             table = reader.format(format_type).load(path)
             table.show()
+        table.createOrReplaceTempView(table_name)
 
 
 class RegisterAdaptor(DslAdaptor):
@@ -147,11 +149,21 @@ class SaveAdaptor(DslAdaptor):
 
 class SelectAdaptor(DslAdaptor):
 
+    def __init__(self, xql_listener):
+        self.xql_listener = xql_listener
+
     def parse(self, ctx):
         original_text = self.get_original_text(ctx)
-        print(original_text.split("\\s+"))
-        # merge
         print(original_text)
+        chunks = original_text.split(" ")
+        print(chunks)
+        origin_table_name = chunks[-1].replace(";", "")
+        print(origin_table_name)
+        xql = original_text.replace("as {}".format(origin_table_name), "")
+        print(xql)
+        df = self.xql_listener._sparkSession.sql(xql)
+        df.createOrReplaceTempView(origin_table_name)
+        df.show()
 
 
 class SetAdaptor(DslAdaptor):

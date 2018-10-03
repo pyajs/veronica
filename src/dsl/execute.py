@@ -32,7 +32,7 @@ class XQLExecListener(DSLSQLListener):
         self.AdaptorDict = {
             "load": LoadAdaptor(self),
             "connect": ConnectAdaptor(),
-            "select": SelectAdaptor(),
+            "select": SelectAdaptor(self),
             "save": SaveAdaptor(),
             "create": CreateAdaptor(),
             "insert": InsertAdaptor(),
