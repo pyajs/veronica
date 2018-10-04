@@ -122,19 +122,34 @@ class RegisterAdaptor(DslAdaptor):
 
 class SaveAdaptor(DslAdaptor):
 
+    def __init__(self, xql_listener):
+        self.xql_listener = xql_listener
+
     def parse(self, ctx):
         option = dict()
         mode, final_path, format_type, table_name = "", "", "", ""
+        partition_by_col = []
         for i in range(ctx.getChildCount()):
             _type = ctx.getChild(i)
             if type(_type) == DSLSQLParser.Format_typeContext:
                 format_type = _type.getText()
             if type(_type) == DSLSQLParser.PathContext:
-                final_path = _type.getText()
+                final_path = self.clean_str(_type.getText())
             if type(_type) == DSLSQLParser.TableNameContext:
                 table_name = _type.getText()
+
             if type(_type) == DSLSQLParser.OverwriteContext:
                 mode = _type.getText()
+            if type(_type) == DSLSQLParser.AppendContext:
+                mode = _type.getText()
+            if type(_type) == DSLSQLParser.ErrorIfExistsContext:
+                mode = _type.getText()
+            if type(_type) == DSLSQLParser.IgnoreContext:
+                mode = _type.getText()
+
+            if type(_type) == DSLSQLParser.ColContext:
+                partition_by_col = _type.getText().split(",")
+
             if type(_type) == DSLSQLParser.ExpressionContext:
                 option[self.clean_str(
                     _type.identifier().getText())] = self.clean_str(
@@ -145,6 +160,15 @@ class SaveAdaptor(DslAdaptor):
                                           _type.expression().STRING().getText())
         print(format_type, final_path, table_name, mode)
         print(option)
+        old_df = self.xql_listener._sparkSession.table(table_name)
+        old_df.show()
+        writer = old_df.write.format(format_type).mode(mode)  # .partitionBy(partition_by_col)
+        if option:
+            writer.options(option)
+
+        if format_type == "json":
+            print("save")
+            writer.save(final_path)
 
 
 class SelectAdaptor(DslAdaptor):
@@ -154,13 +178,9 @@ class SelectAdaptor(DslAdaptor):
 
     def parse(self, ctx):
         original_text = self.get_original_text(ctx)
-        print(original_text)
         chunks = original_text.split(" ")
-        print(chunks)
         origin_table_name = chunks[-1].replace(";", "")
-        print(origin_table_name)
         xql = original_text.replace("as {}".format(origin_table_name), "")
-        print(xql)
         df = self.xql_listener._sparkSession.sql(xql)
         df.createOrReplaceTempView(origin_table_name)
         df.show()
