@@ -28,19 +28,39 @@ class XQLExecListener(DSLSQLListener):
     def __init__(self, sparkSession, group_id):
         self._env = dict()
         self._sparkSession = sparkSession
-        self.last_select_table = None
+        self._last_select_table = None
+        self._tmp_tables = set()
         self.AdaptorDict = {
             "load": LoadAdaptor(self),
-            "connect": ConnectAdaptor(),
+            "connect": ConnectAdaptor(self),
             "select": SelectAdaptor(self),
             "save": SaveAdaptor(self),
-            "create": CreateAdaptor(),
-            "insert": InsertAdaptor(),
-            "drop": DropAdaptor(),
-            "set": SetAdaptor(),
-            "train": TrainAdaptor(),
-            "register": RegisterAdaptor()
+            "create": CreateAdaptor(self),
+            "insert": InsertAdaptor(self),
+            "drop": DropAdaptor(self),
+            "set": SetAdaptor(self),
+            "train": TrainAdaptor(self),
+            "register": RegisterAdaptor(self)
         }
+
+    def set_last_select_table(self, table_name):
+        self._last_select_table = table_name
+
+    def get_last_select_table(self):
+        return self._last_select_table
+
+    def get_tmp_tables(self):
+        return self._tmp_tables
+
+    def add_tmp_tables(self, table_name):
+        self._tmp_tables.add(table_name)
+
+    def add_env(self, key, value):
+        self._env[key] = value
+        return self
+
+    def get_env(self):
+        return self._env
 
     def exitSql(self, ctx):
         self.AdaptorDict.get(ctx.getChild(0).getText().lower()).parse(ctx)

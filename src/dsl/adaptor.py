@@ -17,6 +17,9 @@ class DslAdaptor:
 
 class ConnectAdaptor(DslAdaptor):
 
+    def __init__(self, xql_listener):
+        self.xql_listener = xql_listener
+
     def parse(self, ctx):
         option = dict()
         for i in range(ctx.getChildCount()):
@@ -38,6 +41,9 @@ class ConnectAdaptor(DslAdaptor):
 
 class CreateAdaptor(DslAdaptor):
 
+    def __init__(self, xql_listener):
+        self.xql_listener = xql_listener
+
     def parse(self, ctx):
         original_text = self.get_original_text(ctx)
         # merge
@@ -47,6 +53,9 @@ class CreateAdaptor(DslAdaptor):
 
 class DropAdaptor(DslAdaptor):
 
+    def __init__(self, xql_listener):
+        self.xql_listener = xql_listener
+
     def parse(self, ctx):
         original_text = self.get_original_text(ctx)
         # merge
@@ -55,6 +64,9 @@ class DropAdaptor(DslAdaptor):
 
 
 class InsertAdaptor(DslAdaptor):
+
+    def __init__(self, xql_listener):
+        self.xql_listener = xql_listener
 
     def parse(self, ctx):
         original_text = self.get_original_text(ctx)
@@ -77,6 +89,7 @@ class LoadAdaptor(DslAdaptor):
                 format_type = _type.getText()
             if type(_type) == DSLSQLParser.PathContext:
                 path = self.clean_str(_type.getText())
+                path = path.format(**self.xql_listener.get_env())
             if type(_type) == DSLSQLParser.TableNameContext:
                 table_name = _type.getText()
             if type(_type) == DSLSQLParser.ExpressionContext:
@@ -96,6 +109,9 @@ class LoadAdaptor(DslAdaptor):
 
 
 class RegisterAdaptor(DslAdaptor):
+
+    def __init__(self, xql_listener):
+        self.xql_listener = xql_listener
 
     def parse(self, ctx):
         option = dict()
@@ -135,6 +151,7 @@ class SaveAdaptor(DslAdaptor):
                 format_type = _type.getText()
             if type(_type) == DSLSQLParser.PathContext:
                 final_path = self.clean_str(_type.getText())
+                final_path = final_path.format(**self.xql_listener.get_env())
             if type(_type) == DSLSQLParser.TableNameContext:
                 table_name = _type.getText()
 
@@ -162,9 +179,11 @@ class SaveAdaptor(DslAdaptor):
         print(option)
         old_df = self.xql_listener._sparkSession.table(table_name)
         old_df.show()
-        writer = old_df.write.format(format_type).mode(mode)  # .partitionBy(partition_by_col)
+        writer = old_df.write.format(format_type).mode(mode)
         if option:
             writer.options(option)
+        if partition_by_col:
+            writer.partitionBy(partition_by_col)
 
         if format_type == "json":
             print("save")
@@ -188,11 +207,37 @@ class SelectAdaptor(DslAdaptor):
 
 class SetAdaptor(DslAdaptor):
 
+    def __init__(self, xql_listener):
+        self.xql_listener = xql_listener
+
     def parse(self, ctx):
-        print("set adaptor", ctx)
+        option = dict()
+        set_key, set_value = "", ""
+        for i in range(ctx.getChildCount()):
+            _type = ctx.getChild(i)
+            if type(_type) == DSLSQLParser.SetKeyContext:
+                set_key = _type.getText()
+            if type(_type) == DSLSQLParser.SetValueContext:
+                set_value = self.clean_str(_type.getText())
+            if type(_type) == DSLSQLParser.ExpressionContext:
+                option[self.clean_str(
+                    _type.identifier().getText())] = self.clean_str(
+                        _type.STRING().getText())
+            if type(_type) == DSLSQLParser.BooleanExpressionContext:
+                option[self.clean_str(_type.expression().identifier().
+                                      getText())] = self.clean_str(
+                                          _type.expression().STRING().getText())
+        print(set_key, set_value)
+
+        self.xql_listener._sparkSession.sql(f"set {set_key} = {set_value}")
+        self.xql_listener.add_env(set_key, set_value)
+        self.xql_listener.set_last_select_table(None)
 
 
 class TrainAdaptor(DslAdaptor):
+
+    def __init__(self, xql_listener):
+        self.xql_listener = xql_listener
 
     def parse(self, ctx):
         option = dict()
