@@ -1,4 +1,5 @@
 from core.spark_runtime import SparkRuntime
+from core.udf_function import register_udf
 from dsl.execute import XQLExec, XQLExecListener
 
 
@@ -35,6 +36,8 @@ class PlatformManager:
         temp_params = {i: params[i] for i in params.keys() if i.startswith("xmatrix")}
         print(temp_params)
         runtime = cls.get_runtime(cls)
+
+        register_udf(runtime)
 
         if bool(params.get("xmatrix.rest", "false")):
             ip = params.get("xmatrix.rest.ip", "127.0.0.1")
