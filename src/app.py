@@ -17,7 +17,7 @@ params_list = [
     "-xmatrix.rest.ip", "127.0.0.1",
     "-xmatrix.rest.port", "8123",
     "-xmatrix.platform", "spark",
-    "-xmatrix.xql", "/home/w4n9/Code/Github/veronica/xql/first.xql",
+    "-xmatrix.xql", "/home/w4n9/Code/Github/veronica/xql/alg.xql",
 ]
 
 VeronicaApp.run(params_list)

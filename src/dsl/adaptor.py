@@ -1,5 +1,7 @@
 """ Adaptor """
 
+import importlib
+
 from dsl.parser.DSLSQLParser import DSLSQLParser
 
 
@@ -102,7 +104,7 @@ class LoadAdaptor(DslAdaptor):
         reader = self.xql_listener._sparkSession.read
         if option:
             reader.options(option)
-        if format_type == "json":
+        if format_type in ["json", "csv"]:
             table = reader.format(format_type).load(path)
             table.show()
         table.createOrReplaceTempView(table_name)
@@ -123,7 +125,8 @@ class RegisterAdaptor(DslAdaptor):
             if type(_type) == DSLSQLParser.Format_typeContext:
                 format_type = _type.getText()
             if type(_type) == DSLSQLParser.PathContext:
-                path = _type.getText()
+                path = self.clean_str(_type.getText())
+                path = path.format(**self.xql_listener.get_env())
             if type(_type) == DSLSQLParser.ExpressionContext:
                 option[self.clean_str(
                     _type.identifier().getText())] = self.clean_str(
@@ -134,6 +137,12 @@ class RegisterAdaptor(DslAdaptor):
                                           _type.expression().STRING().getText())
         print(func_name, format_type, path)
         print(option)
+        ss = self.xql_listener._sparkSession
+        xql_alg = MLMapping.find_alg(format_type)
+        model = xql_alg.load(ss, path, option)
+        xql_alg.predict(ss, model, func_name, option)
+        # ss.udf.register(func_name, udf)
+        self.xql_listener.set_last_select_table(None)
 
 
 class SaveAdaptor(DslAdaptor):
@@ -185,7 +194,7 @@ class SaveAdaptor(DslAdaptor):
         if partition_by_col:
             writer.partitionBy(partition_by_col)
 
-        if format_type == "json":
+        if format_type in ["json", "csv"]:
             print("save")
             writer.save(final_path)
 
@@ -202,6 +211,7 @@ class SelectAdaptor(DslAdaptor):
         xql = original_text.replace("as {}".format(origin_table_name), "")
         df = self.xql_listener._sparkSession.sql(xql)
         df.createOrReplaceTempView(origin_table_name)
+        self.xql_listener.set_last_select_table(origin_table_name)
         df.show()
 
 
@@ -247,7 +257,8 @@ class TrainAdaptor(DslAdaptor):
             if type(_type) == DSLSQLParser.Format_typeContext:
                 format_type = _type.getText()
             if type(_type) == DSLSQLParser.PathContext:
-                path = _type.getText()
+                path = self.clean_str(_type.getText())
+                path = path.format(**self.xql_listener.get_env())
             if type(_type) == DSLSQLParser.TableNameContext:
                 table_name = _type.getText()
             if type(_type) == DSLSQLParser.ExpressionContext:
@@ -260,3 +271,15 @@ class TrainAdaptor(DslAdaptor):
                                           _type.expression().STRING().getText())
         print(format_type, table_name, path)
         print(option)
+        df = self.xql_listener._sparkSession.table(table_name)
+        xql_alg = MLMapping.find_alg(format_type)
+        xql_alg.train(df, path, option)
+
+
+class MLMapping:
+    mapping = {"word2vec": "algs.word2vec"}
+
+    @classmethod
+    def find_alg(cls, alg_type):
+        alf_file = importlib.import_module(cls.mapping[alg_type])
+        return getattr(alf_file, 'XQLWord2Vec')()
