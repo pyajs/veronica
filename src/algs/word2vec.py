@@ -1,5 +1,5 @@
 from pyspark.ml.feature import Word2Vec, Word2VecModel
-from pyspark.sql.types import ArrayType, DoubleType, StringType, StructType, StructField, IntegerType
+from pyspark.sql.types import ArrayType, DoubleType, StringType, StructType, StructField
 from algs.functions import Functions
 from numpy.core.multiarray import array
 
