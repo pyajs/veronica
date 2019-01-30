@@ -33,12 +33,11 @@ class ConnectAdaptor(DslAdaptor):
                     _type.identifier().getText())] = self.clean_str(
                         _type.STRING().getText())
             if type(_type) == DSLSQLParser.BooleanExpressionContext:
-                option[self.clean_str(_type.expression().identifier().
-                                      getText())] = self.clean_str(
+                option[self.clean_str(_type.expression().identifier().getText())] = self.clean_str(
                                           _type.expression().STRING().getText())
             if type(_type) == DSLSQLParser.DbContext:
-                globals()[_type.getText()] = option
-        print(globals()["tables"])
+                self.xql_listener.set_connect_options(_type.getText(), option)
+        print(self.xql_listener.get_connect_options())
 
 
 class CreateAdaptor(DslAdaptor):
@@ -104,9 +103,23 @@ class LoadAdaptor(DslAdaptor):
         reader = self.xql_listener._sparkSession.read
         if option:
             reader.options(option)
-        if format_type in ["json", "csv"]:
+        if format_type in ["json", "csv", "parquet", "orc"]:
             table = reader.format(format_type).load(path)
             table.show()
+        if format_type in ["jsonStr", "csvStr"]:
+            pass
+        if format_type == "es":
+            pass
+        if format_type == "mysql":
+            reader.jdbc()
+        if format_type == "hbase":
+            pass
+        if format_type == "hive":
+            pass
+        if format_type == "tidb":
+            pass
+        if format_type == "kudu":
+            pass
         table.createOrReplaceTempView(table_name)
 
 

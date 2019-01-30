@@ -30,6 +30,7 @@ class XQLExecListener(DSLSQLListener):
         self._sparkSession = sparkSession
         self._last_select_table = None
         self._tmp_tables = set()
+        self._connect_options = dict()
         self.AdaptorDict = {
             "load": LoadAdaptor(self),
             "connect": ConnectAdaptor(self),
@@ -48,6 +49,12 @@ class XQLExecListener(DSLSQLListener):
 
     def get_last_select_table(self):
         return self._last_select_table
+
+    def set_connect_options(self, k, v):
+        self._connect_options[k] = v
+
+    def get_connect_options(self):
+        return self._connect_options
 
     def get_tmp_tables(self):
         return self._tmp_tables
