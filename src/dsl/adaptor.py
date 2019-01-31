@@ -1,6 +1,10 @@
 """ Adaptor """
 
+import json
 import importlib
+import logging
+
+from pyspark.sql import Row, SparkSession
 
 from dsl.parser.DSLSQLParser import DSLSQLParser
 
@@ -10,6 +14,8 @@ class DslAdaptor:
     def clean_str(self, raw_str):
         if raw_str.startswith("`") or raw_str.startswith("\""):
             raw_str = raw_str.replace("`", "").replace("\"", "")
+        if raw_str.startswith("'''"):
+            raw_str = raw_str[3: len(raw_str) - 3]
         return raw_str
 
     def get_original_text(self, ctx):
@@ -41,6 +47,7 @@ class ConnectAdaptor(DslAdaptor):
 
 
 class CreateAdaptor(DslAdaptor):
+    # todo : hive 支持,暂时不实现
 
     def __init__(self, xql_listener):
         self.xql_listener = xql_listener
@@ -59,12 +66,13 @@ class DropAdaptor(DslAdaptor):
 
     def parse(self, ctx):
         original_text = self.get_original_text(ctx)
-        # merge
-        print(original_text)
-        # sparkSession.sql(sql).count()
+        logging.info(original_text)
+        self.xql_listener._sparkSession.sql(original_text).count()
+        self.xql_listener.set_last_select_table(None)
 
 
 class InsertAdaptor(DslAdaptor):
+    # todo : hive 支持,暂时不实现
 
     def __init__(self, xql_listener):
         self.xql_listener = xql_listener
@@ -94,32 +102,34 @@ class LoadAdaptor(DslAdaptor):
             if type(_type) == DSLSQLParser.TableNameContext:
                 table_name = _type.getText()
             if type(_type) == DSLSQLParser.ExpressionContext:
-                option[_type.identifier().getText()] = _type.STRING().getText()
+                option[_type.identifier().getText()] = self.clean_str(_type.STRING().getText())
             if type(_type) == DSLSQLParser.BooleanExpressionContext:
                 option[_type.expression().identifier().
-                       getText()] = _type.expression().STRING().getText()
-        print(format_type, path, table_name, option)
+                       getText()] = self.clean_str(_type.expression().STRING().getText())
         table = None
         reader = self.xql_listener._sparkSession.read
         if option:
-            reader.options(option)
+            reader.options(**option)
         if format_type in ["json", "csv", "parquet", "orc"]:
             table = reader.format(format_type).load(path)
-            table.show()
-        if format_type in ["jsonStr", "csvStr"]:
-            pass
-        if format_type == "es":
-            pass
+        if format_type == "jsonStr":
+            json_items = list(map(lambda x: Row(**json.loads(x)),
+                                  filter(lambda x: len(x) > 0,
+                                         self.clean_str(path).split("\n"))))
+            table = self.xql_listener._sparkSession.createDataFrame(json_items)
+        if format_type == "csvStr":
+            csv_str_list = list(filter(lambda x: len(x) > 0,
+                                       self.clean_str(path).split("\n")))
+            key_list = ["_c{}".format(i) for i, _ in enumerate(csv_str_list[0].split(option.get("delimiter", ",")))]
+            if bool(option.get("header", False)):
+                key_list = csv_str_list[0].split(option.get("delimiter", ","))
+            csv_items = [Row(**dict(zip(key_list, i.split(option.get("delimiter", ","))))) for i in csv_str_list[1:]]
+            table = self.xql_listener._sparkSession.createDataFrame(csv_items)
+        if format_type == "sqlite":
+            reader.format("jdbc").load()
         if format_type == "mysql":
-            reader.jdbc()
-        if format_type == "hbase":
             pass
-        if format_type == "hive":
-            pass
-        if format_type == "tidb":
-            pass
-        if format_type == "kudu":
-            pass
+        table.show()
         table.createOrReplaceTempView(table_name)
 
 
@@ -250,7 +260,6 @@ class SetAdaptor(DslAdaptor):
                 option[self.clean_str(_type.expression().identifier().
                                       getText())] = self.clean_str(
                                           _type.expression().STRING().getText())
-        print(set_key, set_value)
 
         self.xql_listener._sparkSession.sql(f"set {set_key} = {set_value}")
         self.xql_listener.add_env(set_key, set_value)
