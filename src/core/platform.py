@@ -17,7 +17,7 @@ class PlatformManager:
         pass
 
     def start_http_server(self, ip, port):
-        print(ip, port)
+        pass
 
     def start_thrift_server(self):
         pass
@@ -30,11 +30,9 @@ class PlatformManager:
 
     @classmethod
     def run(cls, _params, re_run=False):
-        print(_params.pp)
         params = cls.config = _params.pp
 
         temp_params = {i: params[i] for i in params.keys() if i.startswith("xmatrix")}
-        print(temp_params)
         runtime = cls.get_runtime(cls)
 
         register_udf(runtime)

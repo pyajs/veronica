@@ -43,7 +43,6 @@ class ConnectAdaptor(DslAdaptor):
                                           _type.expression().STRING().getText())
             if type(_type) == DSLSQLParser.DbContext:
                 self.xql_listener.set_connect_options(_type.getText(), option)
-        print(self.xql_listener.get_connect_options())
 
 
 class CreateAdaptor(DslAdaptor):
@@ -55,7 +54,6 @@ class CreateAdaptor(DslAdaptor):
     def parse(self, ctx):
         original_text = self.get_original_text(ctx)
         # merge
-        print(original_text)
         # sparkSession.sql(sql).count()
 
 
@@ -80,7 +78,6 @@ class InsertAdaptor(DslAdaptor):
     def parse(self, ctx):
         original_text = self.get_original_text(ctx)
         # merge
-        print(original_text)
         # sparkSession.sql(sql).count()
 
 
@@ -110,7 +107,7 @@ class LoadAdaptor(DslAdaptor):
         reader = self.xql_listener._sparkSession.read
         if option:
             reader.options(**option)
-        if format_type in ["json", "csv", "parquet", "orc"]:
+        if format_type in ["json", "csv", "parquet", "orc", "libsvm"]:
             table = reader.format(format_type).load(path)
         if format_type == "jsonStr":
             json_items = list(map(lambda x: Row(**json.loads(x)),
@@ -118,18 +115,25 @@ class LoadAdaptor(DslAdaptor):
                                          self.clean_str(path).split("\n"))))
             table = self.xql_listener._sparkSession.createDataFrame(json_items)
         if format_type == "csvStr":
+
+            def _csv_split(data, option):
+                if "delimiter" not in option:
+                    return [data]
+                return data.split(option.get("delimiter", ","))
+
+            index = 0
             csv_str_list = list(filter(lambda x: len(x) > 0,
                                        self.clean_str(path).split("\n")))
-            key_list = ["_c{}".format(i) for i, _ in enumerate(csv_str_list[0].split(option.get("delimiter", ",")))]
-            if bool(option.get("header", False)):
-                key_list = csv_str_list[0].split(option.get("delimiter", ","))
-            csv_items = [Row(**dict(zip(key_list, i.split(option.get("delimiter", ","))))) for i in csv_str_list[1:]]
+            key_list = ["_c{}".format(i) for i, _ in enumerate(_csv_split(csv_str_list[0], option))]
+            if str(option.get("header", False)).lower() == "true":  # py3 居然不能通过 bool('false') 来转换
+                key_list = _csv_split(csv_str_list[0], option)
+                index = 1
+            csv_items = [Row(**dict(zip(key_list, _csv_split(i, option)))) for i in csv_str_list[index:]]
             table = self.xql_listener._sparkSession.createDataFrame(csv_items)
         if format_type == "sqlite":
             reader.format("jdbc").load()
         if format_type == "mysql":
             pass
-        table.show()
         table.createOrReplaceTempView(table_name)
 
 
@@ -158,10 +162,8 @@ class RegisterAdaptor(DslAdaptor):
                 option[self.clean_str(_type.expression().identifier().
                                       getText())] = self.clean_str(
                                           _type.expression().STRING().getText())
-        print(func_name, format_type, path)
-        print(option)
         ss = self.xql_listener._sparkSession
-        xql_alg = MLMapping.find_alg(format_type)
+        xql_alg = MLMapping.find_alg(format_type, option)
         model = xql_alg.load(ss, path, option)
         xql_alg.predict(ss, model, func_name, option)
         # ss.udf.register(func_name, udf)
@@ -207,19 +209,18 @@ class SaveAdaptor(DslAdaptor):
                 option[self.clean_str(_type.expression().identifier().
                                       getText())] = self.clean_str(
                                           _type.expression().STRING().getText())
-        print(format_type, final_path, table_name, mode)
-        print(option)
         old_df = self.xql_listener._sparkSession.table(table_name)
-        old_df.show()
-        writer = old_df.write.format(format_type).mode(mode)
-        if option:
-            writer.options(option)
-        if partition_by_col:
-            writer.partitionBy(partition_by_col)
+        if format_type == "console":
+            old_df.show(5)
+        else:
+            writer = old_df.write.format(format_type).mode(mode)
+            if option:
+                writer.options(option)
+            if partition_by_col:
+                writer.partitionBy(partition_by_col)
 
-        if format_type in ["json", "csv"]:
-            print("save")
-            writer.save(final_path)
+            if format_type in ["json", "csv"]:
+                writer.save(final_path)
 
 
 class SelectAdaptor(DslAdaptor):
@@ -235,7 +236,6 @@ class SelectAdaptor(DslAdaptor):
         df = self.xql_listener._sparkSession.sql(xql)
         df.createOrReplaceTempView(origin_table_name)
         self.xql_listener.set_last_select_table(origin_table_name)
-        df.show()
 
 
 class SetAdaptor(DslAdaptor):
@@ -291,17 +291,16 @@ class TrainAdaptor(DslAdaptor):
                 option[self.clean_str(_type.expression().identifier().
                                       getText())] = self.clean_str(
                                           _type.expression().STRING().getText())
-        print(format_type, table_name, path)
-        print(option)
         df = self.xql_listener._sparkSession.table(table_name)
-        xql_alg = MLMapping.find_alg(format_type)
+        xql_alg = MLMapping.find_alg(format_type, option)
         xql_alg.train(df, path, option)
 
 
 class MLMapping:
-    mapping = {"word2vec": "algs.word2vec"}
+    mapping = {"sparkmllib.word2vec": "algs.sparkmllib.word2vec",
+               "sparkmllib.stringindex": "algs.sparkmllib.stringindex"}
 
     @classmethod
-    def find_alg(cls, alg_type):
-        alf_file = importlib.import_module(cls.mapping[alg_type])
-        return getattr(alf_file, 'XQLWord2Vec')()
+    def find_alg(cls, format_type, option):
+        alf_file = importlib.import_module(cls.mapping["{}.{}".format(format_type, option["alg"])])
+        return getattr(alf_file, 'SQL{}'.format(option["alg"].capitalize()))()
