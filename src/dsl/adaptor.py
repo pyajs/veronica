@@ -298,7 +298,8 @@ class TrainAdaptor(DslAdaptor):
 
 class MLMapping:
     mapping = {"sparkmllib.word2vec": "algs.sparkmllib.word2vec",
-               "sparkmllib.stringindex": "algs.sparkmllib.stringindex"}
+               "sparkmllib.stringindex": "algs.sparkmllib.stringindex",
+               "sparkmllib.tfidf": "algs.sparkmllib.tfidf"}
 
     @classmethod
     def find_alg(cls, format_type, option):
