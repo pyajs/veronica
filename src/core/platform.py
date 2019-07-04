@@ -1,3 +1,4 @@
+import os
 from core.spark_runtime import SparkRuntime
 from core.udf_function import register_udf
 from dsl.execute import XQLExec, XQLExecListener
@@ -57,7 +58,10 @@ class PlatformManager:
             if job_file_path.startswith("classpath://"):
                 pass
             else:
-                xql = open(job_file_path, "r").read()
+                if os.path.isfile(job_file_path):
+                    xql = open(job_file_path, "r").read()
+                else:
+                    xql = job_file_path
 
             ss = runtime.sparkSession
             # job_type = params.get("xmatrix.type", "script")

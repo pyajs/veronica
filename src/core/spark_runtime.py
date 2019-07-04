@@ -25,8 +25,8 @@ class SparkRuntime:
             conf.setMaster(self.params["xmatrix.master"])
 
         conf.setAppName(self.params["xmatrix.name"])
-        conf.set("spark.driver.extraClassPath", "/home/w4n9/Code/veronica/jars/sqlite-jdbc-3.23.1.jar")
-        conf.set("spark.executor.extraClassPath", "/home/w4n9/Code/veronica/jars/sqlite-jdbc-3.23.1.jar")
+        # conf.set("spark.driver.extraClassPath", "/home/w4n9/Code/veronica/jars/sqlite-jdbc-3.23.1.jar")
+        # conf.set("spark.executor.extraClassPath", "/home/w4n9/Code/veronica/jars/sqlite-jdbc-3.23.1.jar")
 
         sparkSession = SparkSession.builder.config(conf=conf)
 

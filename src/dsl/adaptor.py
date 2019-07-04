@@ -4,7 +4,7 @@ import json
 import importlib
 import logging
 
-from pyspark.sql import Row, SparkSession
+from pyspark.sql import Row
 
 from dsl.parser.DSLSQLParser import DSLSQLParser
 
@@ -24,6 +24,7 @@ class DslAdaptor:
 
 
 class ConnectAdaptor(DslAdaptor):
+    # todo : 暂时不实现
 
     def __init__(self, xql_listener):
         self.xql_listener = xql_listener
@@ -46,7 +47,7 @@ class ConnectAdaptor(DslAdaptor):
 
 
 class CreateAdaptor(DslAdaptor):
-    # todo : hive 支持,暂时不实现
+    # todo : 暂时不实现
 
     def __init__(self, xql_listener):
         self.xql_listener = xql_listener
@@ -58,19 +59,20 @@ class CreateAdaptor(DslAdaptor):
 
 
 class DropAdaptor(DslAdaptor):
+    # todo : 暂时不实现
 
     def __init__(self, xql_listener):
         self.xql_listener = xql_listener
 
     def parse(self, ctx):
         original_text = self.get_original_text(ctx)
-        logging.info(original_text)
-        self.xql_listener._sparkSession.sql(original_text).count()
-        self.xql_listener.set_last_select_table(None)
+        # logging.info(original_text)
+        # self.xql_listener._sparkSession.sql(original_text).count()
+        # self.xql_listener.set_last_select_table(None)
 
 
 class InsertAdaptor(DslAdaptor):
-    # todo : hive 支持,暂时不实现
+    # todo : 暂时不实现
 
     def __init__(self, xql_listener):
         self.xql_listener = xql_listener
@@ -82,6 +84,9 @@ class InsertAdaptor(DslAdaptor):
 
 
 class LoadAdaptor(DslAdaptor):
+    # Load 语句: 用来加载各种数据源
+    #   load    csv.`/file/path` options header="true" and delimiter="," as t1;
+    # keyword   format   path    keyword             option              table_name
 
     def __init__(self, xql_listener):
         self.xql_listener = xql_listener
@@ -91,29 +96,37 @@ class LoadAdaptor(DslAdaptor):
         format_type, path, table_name = "", "", ""
         for i in range(ctx.getChildCount()):
             _type = ctx.getChild(i)
+            # Format Get
             if type(_type) == DSLSQLParser.Format_typeContext:
                 format_type = _type.getText()
+
+            # Path Get
             if type(_type) == DSLSQLParser.PathContext:
                 path = self.clean_str(_type.getText())
                 path = path.format(**self.xql_listener.get_env())
+
+            # TableName Get
             if type(_type) == DSLSQLParser.TableNameContext:
                 table_name = _type.getText()
+
+            # Options/Where key/value Get
             if type(_type) == DSLSQLParser.ExpressionContext:
                 option[_type.identifier().getText()] = self.clean_str(_type.STRING().getText())
             if type(_type) == DSLSQLParser.BooleanExpressionContext:
-                option[_type.expression().identifier().
-                       getText()] = self.clean_str(_type.expression().STRING().getText())
+                option[_type.expression().identifier().getText()] = self.clean_str(_type.expression().STRING().getText())
+
         table = None
         reader = self.xql_listener._sparkSession.read
         if option:
             reader.options(**option)
-        if format_type in ["json", "csv", "parquet", "orc", "libsvm"]:
+
+        if format_type in ["json", "csv", "parquet", "orc", "libsvm"]:  # Spark 默认支持的一些格式
             table = reader.format(format_type).load(path)
+
         if format_type == "jsonStr":
-            json_items = list(map(lambda x: Row(**json.loads(x)),
-                                  filter(lambda x: len(x) > 0,
-                                         self.clean_str(path).split("\n"))))
+            json_items = list(map(lambda x: Row(**json.loads(x)), filter(lambda x: len(x) > 0, path.split("\n"))))
             table = self.xql_listener._sparkSession.createDataFrame(json_items)
+
         if format_type == "csvStr":
 
             def _csv_split(data, option):
@@ -130,14 +143,20 @@ class LoadAdaptor(DslAdaptor):
                 index = 1
             csv_items = [Row(**dict(zip(key_list, _csv_split(i, option)))) for i in csv_str_list[index:]]
             table = self.xql_listener._sparkSession.createDataFrame(csv_items)
+
         if format_type == "sqlite":
             reader.format("jdbc").load()
+
         if format_type == "mysql":
             pass
+
         table.createOrReplaceTempView(table_name)
 
 
 class RegisterAdaptor(DslAdaptor):
+    # Register 语句: 用来将Model加载为UDF
+    # register word2vec.`/model/path` as w2v_predict;
+    #  keyword   format      path         func_name
 
     def __init__(self, xql_listener):
         self.xql_listener = xql_listener
@@ -147,30 +166,37 @@ class RegisterAdaptor(DslAdaptor):
         func_name, format_type, path = "", "", ""
         for i in range(ctx.getChildCount()):
             _type = ctx.getChild(i)
+
             if type(_type) == DSLSQLParser.FunctionNameContext:
                 func_name = _type.getText()
+
             if type(_type) == DSLSQLParser.Format_typeContext:
                 format_type = _type.getText()
+
             if type(_type) == DSLSQLParser.PathContext:
                 path = self.clean_str(_type.getText())
                 path = path.format(**self.xql_listener.get_env())
+
             if type(_type) == DSLSQLParser.ExpressionContext:
-                option[self.clean_str(
-                    _type.identifier().getText())] = self.clean_str(
-                        _type.STRING().getText())
+                option[self.clean_str(_type.identifier().getText())] = self.clean_str(_type.STRING().getText())
+
             if type(_type) == DSLSQLParser.BooleanExpressionContext:
-                option[self.clean_str(_type.expression().identifier().
-                                      getText())] = self.clean_str(
-                                          _type.expression().STRING().getText())
+                option[self.clean_str(_type.expression().identifier().getText())] = self.clean_str(_type.expression().STRING().getText())
+
         ss = self.xql_listener._sparkSession
+
         xql_alg = MLMapping.find_alg(format_type, option)
+
         model = xql_alg.load(ss, path, option)
         xql_alg.predict(ss, model, func_name, option)
-        # ss.udf.register(func_name, udf)
+
         self.xql_listener.set_last_select_table(None)
 
 
 class SaveAdaptor(DslAdaptor):
+    # Save语句: 用来持久化数据,将数据保存到各种数据源
+    # save     overwrite   table1   as  json.`/data/`;
+    # keyword     mode    table_name   format   path
 
     def __init__(self, xql_listener):
         self.xql_listener = xql_listener
@@ -181,11 +207,14 @@ class SaveAdaptor(DslAdaptor):
         partition_by_col = []
         for i in range(ctx.getChildCount()):
             _type = ctx.getChild(i)
+
             if type(_type) == DSLSQLParser.Format_typeContext:
                 format_type = _type.getText()
+
             if type(_type) == DSLSQLParser.PathContext:
                 final_path = self.clean_str(_type.getText())
                 final_path = final_path.format(**self.xql_listener.get_env())
+
             if type(_type) == DSLSQLParser.TableNameContext:
                 table_name = _type.getText()
 
@@ -202,25 +231,22 @@ class SaveAdaptor(DslAdaptor):
                 partition_by_col = _type.getText().split(",")
 
             if type(_type) == DSLSQLParser.ExpressionContext:
-                option[self.clean_str(
-                    _type.identifier().getText())] = self.clean_str(
-                        _type.STRING().getText())
+                option[self.clean_str(_type.identifier().getText())] = self.clean_str(_type.STRING().getText())
             if type(_type) == DSLSQLParser.BooleanExpressionContext:
-                option[self.clean_str(_type.expression().identifier().
-                                      getText())] = self.clean_str(
-                                          _type.expression().STRING().getText())
+                option[self.clean_str(_type.expression().identifier().getText())] = self.clean_str(_type.expression().STRING().getText())
+
         old_df = self.xql_listener._sparkSession.table(table_name)
         if format_type == "console":
-            old_df.show(5)
+            old_df.show(5, False)
         else:
-            writer = old_df.write.format(format_type).mode(mode)
-            if option:
-                writer.options(option)
-            if partition_by_col:
-                writer.partitionBy(partition_by_col)
+            # writer = old_df.write.format(format_type).mode(mode)
+            if "FileNum" in option:
+                old_df.repartition(int(option["FileNum"]))
+            # if partition_by_col:
+            #     writer.partitionBy(partition_by_col)
 
-            if format_type in ["json", "csv"]:
-                writer.save(final_path)
+            if format_type in ["json", "csv", "parquet", "orc"]:
+                old_df.write.format(format_type).mode(mode).save(final_path)
 
 
 class SelectAdaptor(DslAdaptor):
@@ -230,11 +256,14 @@ class SelectAdaptor(DslAdaptor):
 
     def parse(self, ctx):
         original_text = self.get_original_text(ctx)
+
         chunks = original_text.split(" ")
         origin_table_name = chunks[-1].replace(";", "")
         xql = original_text.replace("as {}".format(origin_table_name), "")
+
         df = self.xql_listener._sparkSession.sql(xql)
         df.createOrReplaceTempView(origin_table_name)
+
         self.xql_listener.set_last_select_table(origin_table_name)
 
 
