@@ -1,3 +1,4 @@
+import os
 from core.spark_runtime import SparkRuntime
 from core.udf_function import register_udf
 from dsl.execute import XQLExec, XQLExecListener
@@ -17,7 +18,7 @@ class PlatformManager:
         pass
 
     def start_http_server(self, ip, port):
-        print(ip, port)
+        pass
 
     def start_thrift_server(self):
         pass
@@ -30,11 +31,9 @@ class PlatformManager:
 
     @classmethod
     def run(cls, _params, re_run=False):
-        print(_params.pp)
         params = cls.config = _params.pp
 
         temp_params = {i: params[i] for i in params.keys() if i.startswith("xmatrix")}
-        print(temp_params)
         runtime = cls.get_runtime(cls)
 
         register_udf(runtime)
@@ -59,7 +58,10 @@ class PlatformManager:
             if job_file_path.startswith("classpath://"):
                 pass
             else:
-                xql = open(job_file_path, "r").read()
+                if os.path.isfile(job_file_path):
+                    xql = open(job_file_path, "r").read()
+                else:
+                    xql = job_file_path
 
             ss = runtime.sparkSession
             # job_type = params.get("xmatrix.type", "script")

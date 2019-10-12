@@ -1,1 +1,0 @@
-{"class":"org.apache.spark.ml.feature.Word2VecModel","timestamp":1539235973421,"sparkVersion":"2.3.0","uid":"Word2Vec_4ee0aa8ed0f208cd3867","paramMap":{"windowSize":5,"inputCol":"words","maxIter":1,"minCount":2,"numPartitions":1,"vectorSize":100,"seed":8727055725314743143,"outputCol":"Word2Vec_4ee0aa8ed0f208cd3867__output","stepSize":0.025,"maxSentenceLength":1000}}
