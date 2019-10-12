@@ -124,7 +124,7 @@ class LoadAdaptor(DslAdaptor):
             table = reader.format(format_type).load(path)
 
         if format_type == "jsonStr":
-            json_items = list(map(lambda x: Row(**json.loads(x)), filter(lambda x: len(x) > 0, path.split("\n"))))
+            json_items = list(map(lambda x: Row(**json.loads(x)), filter(lambda x: len(x) > 0, [i.strip() for i in path.split("\n")])))
             table = self.xql_listener._sparkSession.createDataFrame(json_items)
 
         if format_type == "csvStr":
@@ -237,7 +237,7 @@ class SaveAdaptor(DslAdaptor):
 
         old_df = self.xql_listener._sparkSession.table(table_name)
         if format_type == "console":
-            old_df.show(5, False)
+            old_df.show(10, False)
         else:
             # writer = old_df.write.format(format_type).mode(mode)
             if "FileNum" in option:
