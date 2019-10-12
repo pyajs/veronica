@@ -10,9 +10,14 @@ params_list = [
     "-xmatrix.platform", "spark",
     "-xmatrix.xql",
     """
-    set test = '''{"name": "wyz", "age": "20"}\n{"name": "wyz", "age": "21"}''';
-    load jsonStr.`{test}` as t1;
-    select * from t1 as t2;
+    set test1 = '''{"name": "wyz,a", "age": 20}
+                   {"name": "wyz1,b", "age": 21}
+                   {"name": "wyz1,c", "age": 22}
+                   {"name": "wyz2,d", "age": 23}
+                   {"name": "wyz2,e", "age": 24}
+                   {"name": "wyz3,f,1", "age": 24}''';
+    load jsonStr.`{test1}` as t1;
+    select name, age as all from `t1` where name like "%" as t2;
     save overwrite t2 as console.``;
     """
 ]
